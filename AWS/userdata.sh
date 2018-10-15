@@ -4,10 +4,6 @@ INTERFACE=$(route | grep '^default' | grep -o '[^ ]*$')
 
 echo "Starting Build Process"
 
-echo "Disable SELinux ..."
-
-setenforce 0
-
 echo "Reset DNS settings ..."
 
 echo "supersede domain-name-servers 1.1.1.1, 9.9.9.9;" >> /etc/dhcp/dhclient.conf
