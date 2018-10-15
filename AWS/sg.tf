@@ -8,6 +8,25 @@ resource "aws_security_group" "outline_sg" {
     protocol         = "tcp"
     cidr_blocks      = ["0.0.0.0/0"]
     ipv6_cidr_blocks = ["::/0"]
+    description      = "SSH"
+  }
+
+  ingress {
+    from_port        = 1024
+    to_port          = 65535
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+    description      = "Outline Access"
+  }
+
+  ingress {
+    from_port        = 1024
+    to_port          = 65535
+    protocol         = "udp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+    description      = "Outline Access"
   }
 
   egress {
