@@ -15,17 +15,17 @@ data "aws_ami" "amazon_linux" {
 }
 
 resource "aws_instance" "outline-server" {
-  ami           = "${data.aws_ami.amazon_linux.id}"
+  ami           = data.aws_ami.amazon_linux.id
   instance_type = "t2.nano"
 
   associate_public_ip_address = true
   source_dest_check           = false
-  security_groups             = ["${aws_security_group.outline_sg.name}"]
-  iam_instance_profile        = "${aws_iam_instance_profile.outline-server_instance_profile.name}"
+  security_groups             = [aws_security_group.outline_sg.name]
+  iam_instance_profile        = aws_iam_instance_profile.outline-server_instance_profile.name
 
-  key_name = "${aws_key_pair.ec2-key.key_name}"
+  key_name = aws_key_pair.ec2-key.key_name
 
-  user_data = "${data.template_file.deployment_shell_script.rendered}"
+  user_data = data.template_file.deployment_shell_script.rendered
 
   provisioner "remote-exec" {
     inline = [
@@ -35,10 +35,10 @@ resource "aws_instance" "outline-server" {
     ]
 
     connection {
-      host        = "${aws_instance.outline-server.public_ip}"
+      host        = aws_instance.outline-server.public_ip
       type        = "ssh"
       user        = "ec2-user"
-      private_key = "${file("${var.private_key_file}")}"
+      private_key = file(var.private_key_file)
       timeout     = "1m"
     }
   }
@@ -54,10 +54,10 @@ resource "aws_instance" "outline-server" {
     ]
 
     connection {
-      host        = "${aws_instance.outline-server.public_ip}"
+      host        = aws_instance.outline-server.public_ip
       type        = "ssh"
       user        = "ec2-user"
-      private_key = "${file("${var.private_key_file}")}"
+      private_key = file(var.private_key_file)
       timeout     = "1m"
     }
   }
@@ -68,10 +68,10 @@ resource "aws_instance" "outline-server" {
 
   provisioner "local-exec" {
     command = "rm -f ${var.client_config_path}/outline-install-details-${aws_instance.outline-server.public_ip}.txt"
-    when    = "destroy"
+    when    = destroy
   }
 
-  tags {
+  tags = {
     Name = "outline-server"
   }
 }
@@ -94,16 +94,17 @@ resource "aws_iam_role" "outline-server_ec2_role" {
   ]
 }
 EOF
+
 }
 
 resource "aws_iam_instance_profile" "outline-server_instance_profile" {
   name = "outline-server_instance_profile"
-  role = "${aws_iam_role.outline-server_ec2_role.name}"
+  role = aws_iam_role.outline-server_ec2_role.name
 }
 
 resource "aws_iam_role_policy" "outline-server_ec2_role_policy" {
   name = "outline-server_ec2_role_policy"
-  role = "${aws_iam_role.outline-server_ec2_role.id}"
+  role = aws_iam_role.outline-server_ec2_role.id
 
   policy = <<EOF
 {
@@ -121,18 +122,20 @@ resource "aws_iam_role_policy" "outline-server_ec2_role_policy" {
   ]
 }
 EOF
+
 }
 
 data "template_file" "deployment_shell_script" {
-  template = "${file("userdata.sh")}"
+  template = file("userdata.sh")
 
-  vars {
-    REGION         = "${var.region}"
-    SECURITY_GROUP = "${aws_security_group.outline_sg.name}"
+  vars = {
+    REGION         = var.region
+    SECURITY_GROUP = aws_security_group.outline_sg.name
   }
 }
 
 resource "aws_key_pair" "ec2-key" {
   key_name_prefix = "outline-key-"
-  public_key      = "${file(var.public_key_file)}"
+  public_key      = file(var.public_key_file)
 }
+
