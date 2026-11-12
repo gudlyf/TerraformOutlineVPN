@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Outline server, Manager or client problems
+    url: https://github.com/OutlineFoundation/outline-server/issues
+    about: Issues with Outline itself belong upstream.
+  - name: Security vulnerability
+    url: https://github.com/gudlyf/TerraformOutlineVPN/security/advisories/new
+    about: Report privately instead of opening a public issue.

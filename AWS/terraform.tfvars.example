@@ -1,0 +1,22 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is git-ignored.
+
+region = "ca-central-1"
+
+# name          = "outline"
+# server_name   = "My Outline Server"
+# instance_type = "t3.micro"
+
+# Lock the management API down to the machine running Outline Manager.
+# management_cidr_blocks = ["203.0.113.25/32"]
+
+# Pin ports instead of letting Terraform pick random ones.
+# api_port  = 8443  # management API
+# keys_port = 443   # access keys; 443 blends in with HTTPS on restrictive networks
+
+# Optional SSH access (Session Manager is enabled by default and needs no open port).
+# ssh_key_name    = "my-key"
+# ssh_cidr_blocks = ["203.0.113.25/32"]
+
+# tags = {
+#   Owner = "me"
+# }

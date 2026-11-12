@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform ${{ matrix.terraform }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest version that can run the mock-provider tests, plus latest.
+        terraform: ["1.7.5", "latest"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ matrix.terraform }}
+          terraform_wrapper: false
+
+      - name: Format
+        run: terraform fmt -recursive -check -diff
+
+      - name: Validate root configuration
+        working-directory: AWS
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate and test module
+        working-directory: modules/outline-aws
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+          terraform test
+
+  opentofu:
+    name: OpenTofu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_wrapper: false
+
+      - name: Validate and test module
+        working-directory: modules/outline-aws
+        run: |
+          tofu init -backend=false -input=false
+          tofu validate
+          tofu test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: terraform-linters/setup-tflint@v6
+
+      - name: TFLint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init
+          tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl"
+
+      - name: ShellCheck user data template
+        run: shellcheck --shell=bash modules/outline-aws/templates/user_data.sh.tftpl
