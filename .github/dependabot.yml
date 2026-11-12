@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: terraform
+    directories:
+      - /AWS
+      - /modules/outline-aws
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

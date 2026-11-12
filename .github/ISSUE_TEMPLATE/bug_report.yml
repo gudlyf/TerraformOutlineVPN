@@ -1,0 +1,28 @@
+name: Bug report
+description: Something doesn't deploy or doesn't work after deploying
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you ran, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `terraform version` (or `tofu version`), run in the AWS/ directory.
+    validations:
+      required: true
+  - type: input
+    id: region
+    attributes:
+      label: Region and instance type
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Terraform errors, or the `==> [outline-bootstrap]` lines from /var/log/cloud-init-output.log. Remove IPs and apiUrl values first.
+      render: shell

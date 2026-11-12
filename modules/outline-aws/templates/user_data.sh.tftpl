@@ -1,0 +1,81 @@
+#!/bin/bash
+# First-boot bootstrap for an Outline VPN server on Amazon Linux 2023.
+#
+# Rendered by Terraform's templatefile(). Values written as $${...} are filled
+# in by Terraform; shell variables deliberately use the $name form (no braces)
+# so they are never mistaken for template interpolations.
+#
+# Output lands in /var/log/cloud-init-output.log on the instance.
+# SC2154: template values look like unset shell variables to shellcheck.
+# SC2016: the single-quoted $${...} below is substituted by Terraform, not bash.
+# shellcheck disable=SC2154,SC2016
+set -euo pipefail
+
+readonly PUBLIC_IP="${public_ip}"
+readonly API_PORT="${api_port}"
+readonly KEYS_PORT="${keys_port}"
+readonly REGION="${region}"
+readonly PARAMETER_NAME="${manager_config_parameter_name}"
+readonly INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/OutlineFoundation/outline-server/${install_script_ref}/src/server_manager/install_scripts/install_server.sh"
+readonly ACCESS_FILE=/opt/outline/access.txt
+SERVER_NAME="$(echo '${server_name_b64}' | base64 --decode)"
+readonly SERVER_NAME
+
+log() { echo "==> [outline-bootstrap] $*"; }
+
+imds() {
+  local token
+  token=$(curl -fsS -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 60" http://169.254.169.254/latest/api/token)
+  curl -fsS -H "X-aws-ec2-metadata-token: $token" "http://169.254.169.254/latest/meta-data/$1"
+}
+
+# The instance launches without a public IP; Terraform attaches the Elastic IP
+# right after it is created. Wait for it so we have internet access and so the
+# installer's own firewall self-check hits the right address.
+log "Waiting for Elastic IP $PUBLIC_IP to be attached"
+attached=false
+for _ in $(seq 1 120); do
+  if [ "$(imds public-ipv4 2>/dev/null || true)" = "$PUBLIC_IP" ]; then
+    attached=true
+    break
+  fi
+  sleep 5
+done
+if [ "$attached" != true ]; then
+  log "Elastic IP was not attached after 10 minutes; giving up"
+  exit 1
+fi
+
+log "Installing Docker"
+dnf -y install docker openssl
+systemctl enable --now docker.service
+
+log "Running the Outline installer"
+curl -fsSL --retry 10 --retry-delay 3 --retry-all-errors -o /root/outline-install.sh "$INSTALL_SCRIPT_URL"
+# The installer prints the Manager config (including the management secret) on
+# stdout. Keep that out of cloud-init-output.log and the EC2 console output by
+# sending stdout to a root-only file; progress and errors still go to stderr.
+umask 077
+SB_DEFAULT_SERVER_NAME="$SERVER_NAME" bash /root/outline-install.sh \
+  --hostname "$PUBLIC_IP" \
+  --api-port "$API_PORT" \
+  --keys-port "$KEYS_PORT" >/root/outline-install.log
+
+log "Publishing the Outline Manager config to SSM parameter $PARAMETER_NAME"
+api_url=$(sed -n 's/^apiUrl://p' "$ACCESS_FILE")
+cert_sha256=$(sed -n 's/^certSha256://p' "$ACCESS_FILE")
+if [ -z "$api_url" ] || [ -z "$cert_sha256" ]; then
+  log "Could not read apiUrl/certSha256 from $ACCESS_FILE"
+  exit 1
+fi
+manager_config=$(printf '{"apiUrl":"%s","certSha256":"%s"}' "$api_url" "$cert_sha256")
+
+aws ssm put-parameter \
+  --region "$REGION" \
+  --name "$PARAMETER_NAME" \
+  --description "Outline Manager config for $SERVER_NAME" \
+  --type SecureString \
+  --overwrite \
+  --value "$manager_config" >/dev/null
+
+log "Done. Management API on TCP $API_PORT, access keys on TCP/UDP $KEYS_PORT"

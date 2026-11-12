@@ -1,13 +1,26 @@
-# Compiled files
+# Terraform working directories and state
+.terraform/
 *.tfstate
 *.tfstate.*
-*.tfstate.backup
+crash.log
+crash.*.log
+*.tfplan
+tfplan
 
-# Module directory
-.terraform/
+# Local variable files can hold IPs, key names and other personal settings.
+# terraform.tfvars.example is committed instead.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
-# Other
-certs/outline*
-client_configs/*.txt
-.idea/*
+# Lock files are committed for the root configuration only; modules float.
+modules/**/.terraform.lock.hcl
+
+# Editors and OS
+.idea/
+.vscode/
 .DS_Store
